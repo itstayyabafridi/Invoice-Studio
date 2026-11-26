@@ -1,0 +1,8 @@
+{
+  "name": "Invoice Studio",
+  "description": "Order \u0026 invoice generator with live A4 preview, instant PDF export, and automatic local saving for repeat billing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
