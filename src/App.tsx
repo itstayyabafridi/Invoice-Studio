@@ -26,7 +26,6 @@ import {
   InvoiceItem,
   SavedInvoice,
 } from './types/invoice';
-import { generateInvoicePDF } from './utils/pdfGenerator';
 import {
   loadActiveDraft,
   loadCatalogItems,
@@ -81,14 +80,6 @@ export default function App() {
       new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     );
   }, [invoice]);
-
-  // Auto-save company profile
-  useEffect(() => {
-    saveCompanyProfile(profile);
-    setLastSavedTime(
-      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    );
-  }, [profile]);
 
   // Auto-save saved invoices library
   useEffect(() => {
@@ -156,9 +147,12 @@ export default function App() {
   const handleDownloadPDF = async () => {
     setIsExporting(true);
     try {
+      const { generateInvoicePDF } = await import('./utils/pdfGenerator');
       await generateInvoicePDF(invoice, profile);
       upsertSavedInvoice(invoice, profile);
       notify(`Downloaded ${invoice.invoiceNumber || 'Invoice'}.pdf & saved`);
+    } catch {
+      notify('Could not generate the invoice PDF. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -197,6 +191,7 @@ export default function App() {
   const handleResetReferenceSample = () => {
     setInvoice(createReferenceDraft());
     setActiveTab('editor');
+    setMobilePane('panel');
     notify('Loaded TKM reference invoice (INV-5043)');
   };
 
@@ -242,6 +237,7 @@ export default function App() {
       for (const item of imported) {
         if (!existingIds.has(item.id)) {
           merged.push(item);
+          existingIds.add(item.id);
         }
       }
       return merged;
@@ -305,6 +301,7 @@ export default function App() {
           onClick={(e) => {
             e.preventDefault();
             setActiveTab('editor');
+            setMobilePane('panel');
           }}
           className="font-display text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
         >
@@ -505,11 +502,16 @@ export default function App() {
               onLoadInvoice={handleLoadSaved}
               onDuplicateInvoice={handleDuplicateSaved}
               onDownloadSavedPdf={async (entry) => {
-                await generateInvoicePDF(
-                  entry.invoice,
-                  entry.profileSnapshot || profile
-                );
-                notify(`Downloaded ${entry.invoice.invoiceNumber}.pdf`);
+                try {
+                  const { generateInvoicePDF } = await import('./utils/pdfGenerator');
+                  await generateInvoicePDF(
+                    entry.invoice,
+                    entry.profileSnapshot || profile
+                  );
+                  notify(`Downloaded ${entry.invoice.invoiceNumber}.pdf`);
+                } catch {
+                  notify('Could not generate the invoice PDF. Please try again.');
+                }
               }}
               onDeleteInvoice={handleDeleteSaved}
               onImportInvoices={handleImportInvoices}
@@ -528,6 +530,7 @@ export default function App() {
           {activeTab === 'profile' && (
             <CompanyProfilePanel
               profile={profile}
+              onSave={() => saveCompanyProfile(profile)}
               onChange={(updatedProfile) => {
                 if (
                   updatedProfile.defaultThankYouText !==
@@ -548,7 +551,7 @@ export default function App() {
         {/* Right Pane: Live A4 Invoice Sheet Preview */}
         <div
           ref={previewContainerRef}
-          className={`lg:col-span-7 xl:col-span-7 p-4 sm:p-6 lg:p-8 flex flex-col items-center overflow-x-auto ${
+          className={`invoice-preview-pane lg:col-span-7 xl:col-span-7 min-w-0 p-4 sm:p-6 lg:p-8 flex-col items-center-safe overflow-x-auto ${
             mobilePane === 'preview' ? 'flex' : 'hidden md:flex'
           }`}
         >

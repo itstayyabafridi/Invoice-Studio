@@ -1,4 +1,4 @@
-import {
+import type {
   CatalogItem,
   CompanyProfile,
   InvoiceDraft,
@@ -37,7 +37,7 @@ export function createReferenceDraft(): InvoiceDraft {
   return {
     id: 'inv-ref-5043',
     invoiceNumber: 'INV-5043',
-    dateISO: '2026-09-05',
+    dateISO: getTodayISO(),
     customerName: 'Furqan Hassan',
     customerCity: 'Peshawar',
     customerPhone: '',

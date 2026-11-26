@@ -99,8 +99,6 @@ export function loadCompanyProfile(): CompanyProfile {
   >(KEYS.PROFILE, DEFAULT_COMPANY_PROFILE);
   const legacySize =
     typeof saved.logoSize === 'number' ? saved.logoSize : 100;
-  const isLegacyPkrDefault =
-    saved.currencySymbol === 'PKR' || !saved.currencySymbol;
   const isLegacyBankDefault =
     saved.bankName === 'Faysal Bank-Wapda Town Branch Gujranwala' &&
     typeof saved.branchCode !== 'string';
@@ -117,12 +115,9 @@ export function loadCompanyProfile(): CompanyProfile {
       typeof saved.accountType === 'string'
         ? saved.accountType
         : DEFAULT_COMPANY_PROFILE.accountType,
-    currencySymbol: isLegacyPkrDefault
-      ? 'ZAR'
-      : (saved.currencySymbol ?? 'ZAR'),
-    showCurrencySymbol: isLegacyPkrDefault
-      ? true
-      : (saved.showCurrencySymbol ?? true),
+    currencySymbol: saved.currencySymbol ?? DEFAULT_COMPANY_PROFILE.currencySymbol,
+    showCurrencySymbol:
+      saved.showCurrencySymbol ?? DEFAULT_COMPANY_PROFILE.showCurrencySymbol,
     logoWidth:
       typeof saved.logoWidth === 'number' ? saved.logoWidth : legacySize,
     logoHeight:

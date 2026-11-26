@@ -1,24 +1,75 @@
-import React, { useRef } from 'react';
-import { ImagePlus, Minus, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ImagePlus, Minus, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { DEFAULT_COMPANY_PROFILE } from '../data/defaults';
 import { CompanyProfile } from '../types/invoice';
 
 interface CompanyProfilePanelProps {
   profile: CompanyProfile;
   onChange: (updated: CompanyProfile) => void;
+  onSave: () => boolean;
+}
+
+function isCompanyProfile(value: unknown): value is CompanyProfile {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return Object.entries(DEFAULT_COMPANY_PROFILE).every(([key, defaultValue]) => {
+    const field = candidate[key];
+    if (key === 'customLogoDataUrl') {
+      return field === null ||
+        (typeof field === 'string' && /^data:image\/(png|jpeg|webp);base64,/i.test(field));
+    }
+    if (key === 'decimalPlaces') return field === 0 || field === 2;
+    if (typeof defaultValue === 'number') return Number.isFinite(field);
+    return typeof field === typeof defaultValue;
+  });
 }
 
 export const CompanyProfilePanel: React.FC<CompanyProfilePanelProps> = ({
   profile,
   onChange,
+  onSave,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileFileRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState('');
+
+  const changeProfile = (updated: CompanyProfile) => {
+    setStatus('Unsaved changes');
+    onChange(updated);
+  };
+
+  const importProfile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const imported: unknown = JSON.parse(await file.text());
+      if (!isCompanyProfile(imported)) {
+        setStatus('Choose a valid company profile backup.');
+        return;
+      }
+      changeProfile(imported);
+      setStatus('Profile loaded. Save Company Details to keep it.');
+    } catch {
+      setStatus('Could not read the company profile backup.');
+    }
+  };
+
+  const downloadProfile = () => {
+    const backup = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(backup);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'invoice-studio-company-profile.json';
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const update = <K extends keyof CompanyProfile>(
     key: K,
     value: CompanyProfile[K]
   ) => {
-    onChange({ ...profile, [key]: value });
+    changeProfile({ ...profile, [key]: value });
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,24 +86,44 @@ export const CompanyProfilePanel: React.FC<CompanyProfilePanelProps> = ({
   return (
     <div className="divide-y divide-slate-200">
       {/* Header */}
-      <section className="p-6 flex items-start justify-between gap-3">
+      <section className="p-6 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">
             Business & Payment Profile
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Automatically saved and applied to all current and future invoices.
+            Save these details for future invoices in this browser.
           </p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => onChange(DEFAULT_COMPANY_PROFILE)}
+          onClick={() => setStatus(onSave()
+            ? 'Company details saved on this browser.'
+            : 'Browser storage could not save these details. Download a backup to keep them.')}
+          className="h-8 px-2.5 text-xs font-semibold text-white bg-[#0E7C86] hover:bg-[#0B666F] rounded inline-flex items-center gap-1.5 cursor-pointer"
+        >
+          <Save className="w-3.5 h-3.5" />
+          Save Company Details
+        </button>
+        <button type="button" className="h-8 px-2.5 text-xs border border-slate-300 rounded cursor-pointer" onClick={() => profileFileRef.current?.click()}>
+          Load Backup
+        </button>
+        <button type="button" className="h-8 px-2.5 text-xs border border-slate-300 rounded cursor-pointer" onClick={downloadProfile}>
+          Download Backup
+        </button>
+        <input ref={profileFileRef} type="file" accept=".json,application/json" onChange={importProfile} hidden />
+        <button
+          type="button"
+          onClick={() => changeProfile(DEFAULT_COMPANY_PROFILE)}
           className="h-8 px-2.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Restore TKM
         </button>
+        </div>
+        <p role="status" className="text-xs text-slate-600">{status}</p>
       </section>
 
       {/* Brand Identity */}
@@ -147,7 +218,7 @@ export const CompanyProfilePanel: React.FC<CompanyProfilePanelProps> = ({
             <button
               type="button"
               onClick={() =>
-                onChange({ ...profile, logoWidth: 100, logoHeight: 100 })
+                changeProfile({ ...profile, logoWidth: 100, logoHeight: 100 })
               }
               className="text-[11px] font-medium text-[#0E7C86] hover:underline cursor-pointer"
             >

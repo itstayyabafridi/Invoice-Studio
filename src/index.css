@@ -35,6 +35,12 @@
     display: none !important;
   }
 
+  .invoice-preview-pane {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
   .print-only-sheet {
     position: fixed !important;
     inset: 0 !important;
